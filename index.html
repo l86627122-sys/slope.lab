@@ -1,0 +1,850 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Slope Lab</title>
+<style>
+:root{--bg:#f4f6fb;--card:#ffffff;--ink:#1d2433;--muted:#667085;--accent:#4f46e5;--good:#16a34a;--bad:#dc2626;--line:#e4e7ec;--gold:#f59e0b}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0f1420;--card:#1a2130;--ink:#e8ecf4;--muted:#98a2b3;--accent:#818cf8;--good:#22c55e;--bad:#f87171;--line:#2d3648;--gold:#fbbf24}}
+:root[data-theme="dark"]{--bg:#0f1420;--card:#1a2130;--ink:#e8ecf4;--muted:#98a2b3;--accent:#818cf8;--good:#22c55e;--bad:#f87171;--line:#2d3648;--gold:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+.wrap{max-width:720px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+h1{margin:0;font-size:26px}
+h2{margin:0 0 6px;font-size:22px}
+.sub{margin:2px 0 0;color:var(--muted);font-size:14px}
+select,input{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none}
+input:focus,select:focus{border-color:var(--accent)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.btn{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:8px 14px;font:inherit;cursor:pointer}
+.ghost:disabled{opacity:.4;cursor:not-allowed}
+.linkbtn{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:14px;display:block;margin:6px auto 0}
+.hidden{display:none !important}
+
+/* bank */
+.bank-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.bank-top strong{font-size:18px}
+#bankLabel{margin-left:8px;color:var(--muted);font-variant-numeric:tabular-nums}
+.slots{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin:12px 0 8px}
+.slot{height:22px;border-radius:6px;background:var(--line);transition:background .25s,transform .25s}
+.slot.on{background:linear-gradient(135deg,var(--gold),var(--accent));transform:scale(1.04)}
+#bankMsg{margin:0}
+#playBtn.ready{animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(79,70,229,.5)}50%{box-shadow:0 0 0 10px rgba(79,70,229,0)}}
+
+/* question */
+.q-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+.pill{background:var(--line);color:var(--ink);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600}
+#streakLbl{color:var(--gold);font-weight:600;font-size:14px}
+.q-text{font-size:19px;line-height:1.5;margin:6px 0 10px}
+.q-text b{color:var(--accent)}
+.graph-wrap{display:flex;justify-content:center}
+.graph-wrap canvas{max-width:100%;height:auto;border-radius:10px}
+.tbl{border-collapse:collapse;margin:10px auto 0;font-size:17px}
+.tbl th,.tbl td{border:1px solid var(--line);padding:6px 14px;text-align:center}
+.tbl th{color:var(--muted)}
+.answer-row{display:flex;gap:8px;margin-top:14px}
+.answer-row input{flex:1;min-width:0;font-size:18px}
+.row-small{display:flex;gap:8px;margin-top:8px}
+.feedback{margin-top:12px;padding:0;border-radius:12px;font-size:15px}
+.feedback:not(:empty){padding:12px 14px}
+.feedback.ok{background:rgba(22,163,74,.12)}
+.feedback.no{background:rgba(220,38,38,.12)}
+.feedback.skip{background:var(--line)}
+.feedback.hint{background:rgba(245,158,11,.14)}
+.good{color:var(--good)}
+.bad{color:var(--bad)}
+.expl{margin-top:6px;color:var(--muted);font-size:14px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);text-align:center;gap:8px}
+.stats b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.stats span{color:var(--muted);font-size:13px}
+
+/* overlays */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.modal,.game{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;width:min(440px,100%);text-align:center}
+.games{display:grid;gap:10px;margin:14px 0}
+.gamecard{display:grid;grid-template-columns:44px 1fr;gap:2px 12px;text-align:left;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:12px 14px;color:var(--ink);font:inherit;cursor:pointer}
+.gamecard:hover{border-color:var(--accent)}
+.gamecard span{grid-row:span 2;font-size:30px;text-align:center}
+.gamecard b{font-size:17px}
+.gamecard small{color:var(--muted)}
+.game-top{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600;margin-bottom:10px}
+.timer{font-size:22px;font-variant-numeric:tabular-nums;color:var(--accent)}
+#gameMsg{min-height:22px;font-size:14px;margin-top:10px}
+.whack-q{font-size:18px;margin-bottom:12px;min-height:50px}
+.whack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.wbtn{padding:14px 6px;font:inherit;font-size:18px;font-weight:600;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+.wbtn.hit{background:var(--good);color:#fff;border-color:var(--good)}
+.wbtn.miss{background:var(--bad);color:#fff;border-color:var(--bad);opacity:.7}
+.mem{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mcard{aspect-ratio:1/1;padding:4px;font:inherit;font-size:13px;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:12px;cursor:pointer;word-break:break-word;line-height:1.2}
+.mcard.up{background:var(--card);color:var(--ink);border:2px solid var(--accent)}
+.mcard.done{background:var(--good);color:#fff;opacity:.6;cursor:default}
+.snk{width:320px;max-width:100%;height:auto;border-radius:10px;display:block;margin:0 auto}
+.dpad{display:grid;justify-items:center;gap:6px;margin-top:12px}
+.dpad div{display:flex;gap:6px}
+.dpad button{width:58px;height:46px;font-size:18px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+.dpad button:active{background:var(--accent);color:#fff}
+#resultsText{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Slope Lab</h1>
+      <div class="sub">Algebra 1 &middot; Linear functions</div>
+    </div>
+    <select id="topic" aria-label="Topic">
+      <option value="slope">Slope (focus)</option>
+      <option value="lines">Slope + parallel &amp; perpendicular</option>
+      <option value="mixed">Algebra 1 mix</option>
+    </select>
+  </header>
+
+  <section class="card">
+    <div class="bank-top">
+      <div><strong>Game Bank</strong><span id="bankLabel"></span></div>
+      <button id="playBtn" class="btn" disabled>Play game</button>
+    </div>
+    <div id="slots" class="slots"></div>
+    <p id="bankMsg" class="muted small"></p>
+  </section>
+
+  <section class="card">
+    <div class="q-meta">
+      <span id="qKind" class="pill">Slope</span>
+      <span id="streakLbl"></span>
+    </div>
+    <div id="qText" class="q-text"></div>
+    <div id="qGraph" class="graph-wrap"></div>
+    <div class="answer-row">
+      <input id="ans" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 3/4, -2, 0.5, or undefined">
+      <button id="submitBtn" class="btn">Check</button>
+    </div>
+    <div class="row-small">
+      <button id="hintBtn" class="ghost">Hint</button>
+      <button id="skipBtn" class="ghost">Skip</button>
+    </div>
+    <div id="feedback" class="feedback" aria-live="polite"></div>
+    <p class="muted small" style="margin:12px 0 0">Fractions: type 3/4 or -3/4. Vertical lines: type undefined. Wrong answers don't remove bank progress.</p>
+  </section>
+
+  <section class="card stats">
+    <div><b id="stTotal">0</b><span>Correct</span></div>
+    <div><b id="stAcc">&ndash;</b><span>Accuracy</span></div>
+    <div><b id="stStreak">0</b><span>Streak</span></div>
+    <div><b id="stGames">0</b><span>Games</span></div>
+  </section>
+  <button id="resetBtn" class="linkbtn">Reset progress</button>
+</div>
+
+<!-- game menu -->
+<div id="menu" class="overlay hidden">
+  <div class="modal">
+    <h2>Bank full!</h2>
+    <p class="muted">Pick a game. You get 7 minutes. When time is up, the bank empties and you need 20 correct again.</p>
+    <div class="games">
+      <button class="gamecard" data-game="snake"><span>🐍</span><b>Snake</b><small>Eat apples for points. Wrap-around walls.</small></button>
+      <button class="gamecard" data-game="memory"><span>🃏</span><b>Slope Memory</b><small>Match each equation or point pair to its slope.</small></button>
+      <button class="gamecard" data-game="whack"><span>🎯</span><b>Whack-a-Slope</b><small>Click the correct slope as fast as you can.</small></button>
+    </div>
+    <button id="menuLater" class="ghost">Later</button>
+  </div>
+</div>
+
+<!-- game screen -->
+<div id="gameScreen" class="overlay hidden">
+  <div class="game">
+    <div class="game-top">
+      <span id="gameTitle"></span>
+      <span id="gameTimer" class="timer">7:00</span>
+      <span>Score: <b id="gameScore">0</b></span>
+    </div>
+    <div id="gameArea"></div>
+    <div id="gameMsg" class="muted small"></div>
+  </div>
+</div>
+
+<!-- results -->
+<div id="results" class="overlay hidden">
+  <div class="modal">
+    <h2>Time's up!</h2>
+    <p id="resultsText"></p>
+    <button id="resultsBtn" class="btn">Back to questions</button>
+  </div>
+</div>
+
+<script>
+const GAME_LEN = 7 * 60;       // seconds
+const BANK_GOAL = 20;
+const KEY = 'slopeLab.v1';
+const GAME_NAMES = { snake: 'Snake', memory: 'Slope Memory', whack: 'Whack-a-Slope' };
+const $ = id => document.getElementById(id);
+
+/* ---------- persistence (per-browser convenience; wrapped in try/catch) ---------- */
+function defaultState(){ return { bank: 0, totalCorrect: 0, totalAnswered: 0, streak: 0, gamesPlayed: 0 }; }
+function load(){
+  try { return Object.assign(defaultState(), JSON.parse(localStorage.getItem(KEY)) || {}); }
+  catch (e) { return defaultState(); }
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+let state = load();
+
+/* ---------- math helpers ---------- */
+const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const gcd = (a, b) => b ? gcd(b, a % b) : Math.abs(a);
+function frac(p, q){
+  if (q < 0){ p = -p; q = -q; }
+  const g = gcd(p, q) || 1;
+  return { p: p / g, q: q / g };
+}
+const fv = f => f.p / f.q;
+const fs = f => f.q === 1 ? String(f.p) : `${f.p}/${f.q}`;
+function shuffle(a){
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function coefStr(f){            // coefficient of x in y = mx
+  if (f.q === 1){
+    if (f.p === 1) return '';
+    if (f.p === -1) return '-';
+    return String(f.p);
+  }
+  return `(${f.p}/${f.q})`;
+}
+const termStr = f => coefStr(f) + 'x';
+const bStr = b => b === 0 ? '' : (b > 0 ? ` + ${b}` : ` - ${-b}`);
+const nonzero = (a, b) => { let v = rnd(a, b); return v === 0 ? (b > 0 ? 1 : -1) : v; };
+
+/* ---------- answer checking ---------- */
+function parseNum(s){
+  s = s.trim().toLowerCase().replace(/\s+/g, '').replace(/^[a-z]=/, '');
+  if (/^(undefined|undef|none|noslope)$/.test(s)) return { undef: true };
+  const m = s.match(/^([+-]?\d*\.?\d+)\/([+-]?\d*\.?\d+)$/);
+  if (m){
+    const d = Number(m[2]);
+    return d === 0 ? NaN : Number(m[1]) / d;
+  }
+  if (/^[+-]?\d*\.?\d+$/.test(s)) return Number(s);
+  return NaN;
+}
+function isCorrect(input, ans){
+  const v = parseNum(input);
+  if (ans === null) return typeof v === 'object' && v.undef === true;
+  if (typeof v !== 'number' || isNaN(v)) return false;
+  return Math.abs(v - fv(ans)) < 1e-9;
+}
+
+/* ---------- question generators: each returns {kind, text, ans, expl, hint, graph?} ---------- */
+// ans = fraction object, or null meaning "undefined" (vertical line)
+
+function qTwoPoints(){
+  const vertical = Math.random() < 0.15;
+  const x1 = rnd(-8, 8), y1 = rnd(-8, 8);
+  let x2 = rnd(-8, 8), y2 = rnd(-8, 8);
+  if (vertical){
+    x2 = x1;
+    if (y2 === y1) y2 = y1 + pick([-3, -2, 2, 3]);
+  } else {
+    while (x2 === x1) x2 = rnd(-8, 8);
+  }
+  const ans = vertical ? null : frac(y2 - y1, x2 - x1);
+  const expl = vertical
+    ? `Both x-values are ${x1}, so the line is vertical. Division by zero makes the slope undefined.`
+    : `m = (y₂ − y₁) / (x₂ − x₁) = (${y2} - ${y1}) / (${x2} - ${x1}) = ${y2 - y1}/${x2 - x1} = ${fs(ans)}`;
+  return {
+    kind: 'Slope from two points',
+    text: `Find the slope of the line through (${x1}, ${y1}) and (${x2}, ${y2}).`,
+    ans, expl,
+    hint: 'Slope = change in y ÷ change in x. Subtract the y values on top and the x values on the bottom, in the same order.'
+  };
+}
+
+function qEqM(){
+  const m = frac(nonzero(-5, 5), pick([1, 1, 2, 3, 4]));
+  const b = rnd(-9, 9);
+  const eq = `y = ${termStr(m)}${bStr(b)}`;
+  return {
+    kind: 'Slope from an equation',
+    text: `What is the slope of <b>${eq}</b>?`,
+    ans: m,
+    expl: `The equation is in slope-intercept form y = mx + b. The slope m is the number multiplying x, so m = ${fs(m)}.`,
+    hint: 'Look at the coefficient of x. The constant (the number alone) is the y-intercept, not the slope.'
+  };
+}
+
+function qStandard(){
+  const A = nonzero(-6, 6), B = nonzero(-6, 6), C = rnd(-12, 12);
+  const m = frac(-A, B);
+  const ax = A === 1 ? '' : A === -1 ? '-' : String(A);
+  const by = Math.abs(B) === 1 ? '' : String(Math.abs(B));
+  const eq = `${ax}x ${B > 0 ? '+' : '-'} ${by}y = ${C}`;
+  return {
+    kind: 'Slope from standard form',
+    text: `What is the slope of <b>${eq}</b>?`,
+    ans: m,
+    expl: `Solve for y: ${B}y = ${-A}x + ${C}, so y = (${-A}/${B})x + ${C}/${B}. The slope is −A/B = ${fs(m)}.`,
+    hint: 'Get y by itself first. Then read the number in front of x.'
+  };
+}
+
+function qTable(){
+  const m = nonzero(-4, 4), b = rnd(-6, 6), s = pick([1, 2]), x0 = rnd(-4, 0);
+  const xs = [0, 1, 2, 3].map(i => x0 + i * s);
+  const ys = xs.map(x => m * x + b);
+  const row = (lbl, arr) => `<tr><th>${lbl}</th>${arr.map(v => `<td>${v}</td>`).join('')}</tr>`;
+  const html = `<table class="tbl"><tbody>${row('x', xs)}${row('y', ys)}</tbody></table>`;
+  return {
+    kind: 'Rate of change',
+    text: `Use the table. What is the slope of the line?${html}`,
+    ans: frac(m, 1),
+    expl: `Rate of change = (${ys[3]} - ${ys[0]}) / (${xs[3]} - ${xs[0]}) = ${ys[3] - ys[0]}/${xs[3] - xs[0]} = ${m}.`,
+    hint: 'Pick two rows. Subtract the y-values, subtract the x-values, then divide.'
+  };
+}
+
+function qGraph(){
+  const p = nonzero(-4, 4), q = rnd(1, 3);
+  const x0 = rnd(-7, 7 - q);
+  const lo = Math.max(-8, -8 - p), hi = Math.min(8, 8 - p);
+  const y0 = rnd(lo, hi);
+  const m = frac(p, q);
+  return {
+    kind: 'Slope from a graph',
+    text: 'Use the graph. What is the slope of the line?',
+    ans: m,
+    graph: { m, x0, y0 },
+    expl: `Pick two points where the line crosses grid intersections. Moving ${q} right and ${p} ${p > 0 ? 'up' : 'down'}, rise/run = ${p}/${q} = ${fs(m)}.`,
+    hint: 'Slope = rise ÷ run. Count how far the line goes up or down (rise) for each step to the right (run).'
+  };
+}
+
+function qRate(){
+  const dd = rnd(2, 5), d1 = rnd(1, 6), d2 = d1 + dd;
+  const h1 = rnd(8, 20), dh = nonzero(-6, 8), h2 = h1 + dh;
+  const m = frac(dh, dd);
+  return {
+    kind: 'Rate of change',
+    text: `A candle's height changes at a constant rate. At minute ${d1} it is ${h1} cm tall. At minute ${d2} it is ${h2} cm tall. What is the rate of change (slope) in cm per minute?`,
+    ans: m,
+    expl: `Rate = (${h2} - ${h1}) / (${d2} - ${d1}) = ${dh}/${dd} = ${fs(m)}${dh < 0 ? '. Negative means the candle is shrinking.' : '.'}`,
+    hint: 'Rate of change = (later height − earlier height) ÷ (later minute − earlier minute).'
+  };
+}
+
+function qPerp(){
+  const p = nonzero(-5, 5), q = pick([1, 2, 3, 4]);
+  const m = frac(p, q);
+  const b = rnd(-6, 6);
+  const ask = pick(['parallel', 'perpendicular']);
+  const ans = ask === 'parallel' ? m : frac(-q, p);
+  return {
+    kind: 'Parallel & perpendicular',
+    text: `A line has the equation <b>y = ${termStr(m)}${bStr(b)}</b>. What is the slope of a line that is <b>${ask}</b> to it?`,
+    ans,
+    expl: ask === 'parallel'
+      ? `Parallel lines have the same slope, so the answer is ${fs(m)}.`
+      : `Perpendicular slopes are negative reciprocals: flip ${fs(m)} and change its sign to get ${fs(ans)}.`,
+    hint: ask === 'parallel'
+      ? 'Parallel lines never cross, so they have the same slope.'
+      : 'Perpendicular: flip the fraction and change the sign.'
+  };
+}
+
+function qYInt(){
+  const m = frac(nonzero(-5, 5), pick([1, 2, 3, 4]));
+  const x = rnd(-5, 5), y = rnd(-8, 8);
+  const ans = frac(y * m.q - m.p * x, m.q);
+  return {
+    kind: 'Y-intercept',
+    text: `A line has slope <b>${fs(m)}</b> and passes through (${x}, ${y}). What is its y-intercept?`,
+    ans,
+    expl: `Use y = mx + b: ${y} = (${fs(m)})(${x}) + b, so b = ${y} - (${fs(m)})(${x}) = ${fs(ans)}.`,
+    hint: 'Plug in the point for x and y, then solve for b.'
+  };
+}
+
+function qSolve(){
+  const x = rnd(-6, 6), a = nonzero(-6, 6), b = rnd(-10, 10), c = a * x + b;
+  return {
+    kind: 'Linear equation',
+    text: `Solve for x: <b>${a}x ${b >= 0 ? '+' : '-'} ${Math.abs(b)} = ${c}</b>`,
+    ans: frac(x, 1),
+    expl: `Subtract ${b} from both sides: ${a}x = ${c - b}. Divide by ${a}: x = ${x}.`,
+    hint: 'Undo the addition or subtraction first, then divide by the number in front of x.'
+  };
+}
+
+function qEval(){
+  const m = nonzero(-5, 5), b = rnd(-9, 9), x = rnd(-5, 5), y = m * x + b;
+  return {
+    kind: 'Evaluate',
+    text: `If <b>y = ${termStr(frac(m, 1))}${bStr(b)}</b>, what is y when x = ${x}?`,
+    ans: frac(y, 1),
+    expl: `y = ${m}(${x})${bStr(b)} = ${m * x}${bStr(b)} = ${y}.`,
+    hint: 'Replace every x with the given number, then do the math.'
+  };
+}
+
+/* weighted topic pools */
+const TOPICS = {
+  slope: [[qTwoPoints, 3], [qEqM, 2], [qStandard, 2], [qTable, 1], [qGraph, 2], [qRate, 1]],
+  lines: [[qPerp, 3], [qYInt, 3], [qTwoPoints, 1], [qEqM, 1], [qGraph, 1], [qStandard, 1]],
+  mixed: [[qTwoPoints, 2], [qEqM, 1], [qGraph, 1], [qStandard, 1], [qSolve, 2], [qEval, 2], [qYInt, 1], [qPerp, 1]]
+};
+function weightedPick(pool){
+  const total = pool.reduce((s, [, w]) => s + w, 0);
+  let r = Math.random() * total;
+  for (const [fn, w] of pool){
+    r -= w;
+    if (r < 0) return fn;
+  }
+  return pool[0][0];
+}
+
+/* ---------- practice UI ---------- */
+let cur = null, answered = false, lastFn = null;
+
+function newQuestion(){
+  const pool = TOPICS[$('topic').value];
+  let fn, tries = 0;
+  do { fn = weightedPick(pool); tries++; } while (fn === lastFn && tries < 6);
+  lastFn = fn;
+  cur = fn();
+  answered = false;
+
+  $('qKind').textContent = cur.kind;
+  $('qText').innerHTML = cur.text;
+  const g = $('qGraph');
+  g.innerHTML = '';
+  if (cur.graph){
+    const cv = document.createElement('canvas');
+    cv.width = 340; cv.height = 340;
+    g.appendChild(cv);
+    drawGraph(cv, cur.graph.m, cur.graph.x0, cur.graph.y0);
+  }
+  const ans = $('ans');
+  ans.value = '';
+  ans.readOnly = false;
+  $('submitBtn').textContent = 'Check';
+  $('hintBtn').disabled = false;
+  $('skipBtn').disabled = false;
+  const fb = $('feedback');
+  fb.className = 'feedback';
+  fb.innerHTML = '';
+  ans.focus();
+}
+
+function lockQuestion(){
+  $('ans').readOnly = true;
+  $('submitBtn').textContent = 'Next →';
+  $('hintBtn').disabled = true;
+  $('skipBtn').disabled = true;
+}
+
+function showFeedback(mode){
+  const q = cur;
+  const ansTxt = q.ans === null ? 'undefined (vertical line)' : fs(q.ans);
+  let head;
+  if (mode === 'ok') head = `<b class="good">✅ Correct!</b> ${state.bank >= BANK_GOAL ? 'Bank full!' : 'Bank +1'}`;
+  else if (mode === 'no') head = `<b class="bad">❌ Not quite.</b> The answer is <b>${ansTxt}</b>.`;
+  else head = `Skipped. The answer is <b>${ansTxt}</b>.`;
+  const fb = $('feedback');
+  fb.className = 'feedback ' + mode;
+  fb.innerHTML = `${head}<div class="expl">${q.expl}</div>`;
+}
+
+function submit(){
+  if (!cur || answered) return;
+  const raw = $('ans').value;
+  if (!raw.trim()){ $('ans').focus(); return; }
+  answered = true;
+  const ok = isCorrect(raw, cur.ans);
+  const wasFull = state.bank >= BANK_GOAL;
+  state.totalAnswered++;
+  if (ok){
+    state.totalCorrect++;
+    state.streak++;
+    state.bank = Math.min(BANK_GOAL, state.bank + 1);
+  } else {
+    state.streak = 0;
+  }
+  save();
+  showFeedback(ok ? 'ok' : 'no');
+  lockQuestion();
+  renderAll();
+  if (ok && !wasFull && state.bank >= BANK_GOAL && !game) setTimeout(openMenu, 1200);
+}
+
+function skip(){
+  if (!cur || answered) return;
+  answered = true;
+  showFeedback('skip');
+  lockQuestion();
+}
+
+function hint(){
+  if (!cur || answered) return;
+  const fb = $('feedback');
+  fb.className = 'feedback hint';
+  fb.innerHTML = `<b>Hint:</b> ${cur.hint}`;
+  $('ans').focus();
+}
+
+function onEnter(){
+  if (answered) newQuestion();
+  else submit();
+}
+
+/* ---------- graph drawing ---------- */
+function drawGraph(cv, m, x0, y0){
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height, s = W / 18;     // domain -9..9
+  const X = x => W / 2 + x * s, Y = y => H / 2 - y * s;
+  const cs = getComputedStyle(document.documentElement);
+  const gridC = cs.getPropertyValue('--line').trim() || '#e4e7ec';
+  const inkC = cs.getPropertyValue('--muted').trim() || '#667085';
+  const accC = cs.getPropertyValue('--accent').trim() || '#4f46e5';
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = gridC; ctx.lineWidth = 1;
+  for (let i = -8; i <= 8; i++){
+    ctx.beginPath(); ctx.moveTo(X(i), 0); ctx.lineTo(X(i), H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, Y(i)); ctx.lineTo(W, Y(i)); ctx.stroke();
+  }
+  ctx.strokeStyle = inkC; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.moveTo(W / 2, 0); ctx.lineTo(W / 2, H); ctx.stroke();
+  ctx.fillStyle = inkC; ctx.font = '11px system-ui, sans-serif';
+  for (let i = -8; i <= 8; i += 2){
+    if (i === 0) continue;
+    ctx.fillText(String(i), X(i) - 4, H / 2 + 14);
+    ctx.fillText(String(i), W / 2 + 5, Y(i) + 4);
+  }
+  const mv = fv(m);
+  const f = x => y0 + mv * (x - x0);
+  ctx.strokeStyle = accC; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(X(-9), Y(f(-9))); ctx.lineTo(X(9), Y(f(9))); ctx.stroke();
+}
+
+/* ---------- bank & stats rendering ---------- */
+function renderBank(){
+  const slots = $('slots');
+  if (slots.children.length !== BANK_GOAL){
+    slots.innerHTML = '';
+    for (let i = 0; i < BANK_GOAL; i++){
+      const d = document.createElement('div');
+      d.className = 'slot';
+      slots.appendChild(d);
+    }
+  }
+  [...slots.children].forEach((s, i) => s.classList.toggle('on', i < state.bank));
+  $('bankLabel').textContent = `${state.bank}/${BANK_GOAL}`;
+  const full = state.bank >= BANK_GOAL;
+  const pb = $('playBtn');
+  pb.disabled = !full || !!game;
+  pb.classList.toggle('ready', full && !game);
+  $('bankMsg').textContent = full
+    ? 'Bank full! Hit Play to unlock your 7-minute game.'
+    : `${BANK_GOAL - state.bank} more correct to unlock a 7-minute game.`;
+}
+
+function renderStats(){
+  $('stTotal').textContent = state.totalCorrect;
+  $('stAcc').textContent = state.totalAnswered ? Math.round(state.totalCorrect / state.totalAnswered * 100) + '%' : '–';
+  $('stStreak').textContent = state.streak;
+  $('stGames').textContent = state.gamesPlayed;
+  $('streakLbl').textContent = state.streak > 1 ? `🔥 ${state.streak} in a row` : '';
+}
+
+function renderAll(){ renderBank(); renderStats(); }
+
+/* ---------- game menu, timer & lifecycle ---------- */
+let game = null;   // {type, name, score, endAt, tick, stop, timers}
+
+function openMenu(){ $('menu').classList.remove('hidden'); }
+function closeMenu(){ $('menu').classList.add('hidden'); }
+
+function later(fn, ms){
+  const g = game;
+  const h = setTimeout(() => { if (g && game === g) fn(); }, ms);
+  if (g) g.timers.push(h);
+}
+
+function startGame(type){
+  closeMenu();
+  $('results').classList.add('hidden');
+  if (state.bank < BANK_GOAL || game) return;
+  game = { type, name: GAME_NAMES[type], score: 0, endAt: Date.now() + GAME_LEN * 1000, timers: [], stop: null, tick: null };
+  $('gameTitle').textContent = game.name;
+  $('gameScore').textContent = '0';
+  $('gameMsg').textContent = '';
+  $('gameScreen').classList.remove('hidden');
+  const area = $('gameArea');
+  area.innerHTML = '';
+  if (type === 'snake') startSnake(area);
+  else if (type === 'memory') startMemory(area);
+  else startWhack(area);
+  game.tick = setInterval(tickGame, 250);
+  tickGame();
+  renderBank();
+}
+
+function tickGame(){
+  if (!game) return;
+  const left = Math.max(0, Math.ceil((game.endAt - Date.now()) / 1000));
+  $('gameTimer').textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`;
+  if (left <= 0) endGame();
+}
+
+function addScore(n){
+  if (!game) return;
+  game.score += n;
+  $('gameScore').textContent = game.score;
+}
+
+function endGame(){
+  if (!game) return;
+  const g = game;
+  game = null;
+  clearInterval(g.tick);
+  if (g.stop) g.stop();
+  g.timers.forEach(clearTimeout);
+  $('gameScreen').classList.add('hidden');
+  $('gameArea').innerHTML = '';
+  state.bank = 0;                 // bank empties; the cycle repeats
+  state.gamesPlayed++;
+  save();
+  $('resultsText').textContent = `You scored ${g.score} in ${g.name}. Your bank is empty. Get ${BANK_GOAL} correct to unlock another game.`;
+  $('results').classList.remove('hidden');
+  renderAll();
+}
+
+/* ---------- Game 1: Snake ---------- */
+function startSnake(area){
+  area.innerHTML = `<canvas class="snk" width="320" height="320"></canvas>
+    <div class="dpad">
+      <button data-dx="0" data-dy="-1" aria-label="Up">▲</button>
+      <div>
+        <button data-dx="-1" data-dy="0" aria-label="Left">◀</button>
+        <button data-dx="0" data-dy="1" aria-label="Down">▼</button>
+        <button data-dx="1" data-dy="0" aria-label="Right">▶</button>
+      </div>
+    </div>`;
+  const cv = area.querySelector('canvas');
+  const ctx = cv.getContext('2d');
+  const N = 16, C = 20;
+  const startSnakeBody = () => [{ x: 8, y: 8 }, { x: 7, y: 8 }, { x: 6, y: 8 }];
+  let snake = startSnakeBody();
+  let dir = { x: 1, y: 0 }, nd = { x: 1, y: 0 };
+  let apple = null;
+  const same = (a, b) => a.x === b.x && a.y === b.y;
+
+  function placeApple(){
+    do { apple = { x: rnd(0, N - 1), y: rnd(0, N - 1) }; }
+    while (snake.some(s => same(s, apple)));
+  }
+  function setDir(dx, dy){
+    if (dx === -dir.x && dy === -dir.y) return;   // no instant reversal
+    nd = { x: dx, y: dy };
+  }
+  function draw(){
+    ctx.fillStyle = '#111827';
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(apple.x * C + C / 2, apple.y * C + C / 2, C * 0.36, 0, Math.PI * 2);
+    ctx.fill();
+    snake.forEach((s, i) => {
+      ctx.fillStyle = i === 0 ? '#86efac' : '#22c55e';
+      ctx.fillRect(s.x * C + 1, s.y * C + 1, C - 2, C - 2);
+    });
+  }
+  function step(){
+    dir = nd;
+    const head = { x: (snake[0].x + dir.x + N) % N, y: (snake[0].y + dir.y + N) % N };
+    if (snake.some(s => same(s, head))){
+      snake = startSnakeBody();
+      dir = nd = { x: 1, y: 0 };
+      $('gameMsg').textContent = '💥 Oops, you hit yourself. Snake reset. Keep going!';
+    } else {
+      snake.unshift(head);
+      if (same(head, apple)){
+        addScore(1);
+        placeApple();
+        $('gameMsg').textContent = '🍎 +1. Nice!';
+      } else {
+        snake.pop();
+      }
+    }
+    draw();
+  }
+
+  placeApple();
+  draw();
+  const onKey = e => {
+    const m = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+                w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0], W: [0, -1], S: [0, 1], A: [-1, 0], D: [1, 0] }[e.key];
+    if (m){ e.preventDefault(); setDir(m[0], m[1]); }
+  };
+  window.addEventListener('keydown', onKey);
+  area.querySelectorAll('.dpad button').forEach(b => {
+    b.onclick = () => setDir(Number(b.dataset.dx), Number(b.dataset.dy));
+  });
+  let tx = 0, ty = 0;
+  cv.addEventListener('touchstart', e => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; }, { passive: true });
+  cv.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - tx, dy = e.changedTouches[0].clientY - ty;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+    if (Math.abs(dx) > Math.abs(dy)) setDir(dx > 0 ? 1 : -1, 0);
+    else setDir(0, dy > 0 ? 1 : -1);
+  });
+  const iv = setInterval(step, 130);
+  game.stop = () => { clearInterval(iv); window.removeEventListener('keydown', onKey); };
+  $('gameMsg').textContent = 'Arrow keys / WASD, the buttons, or swipe on the board.';
+}
+
+/* ---------- Game 2: Slope Memory ---------- */
+function makePairs(n){
+  const out = [], seen = new Set();
+  while (out.length < n){
+    const p = nonzero(-6, 6), q = pick([1, 1, 2, 3, 4]);
+    const m = frac(p, q);
+    const key = fs(m);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    let front;
+    if (Math.random() < 0.5){
+      front = `y = ${termStr(m)}${bStr(rnd(-9, 9))}`;
+    } else {
+      const k = rnd(1, 2);
+      const x1 = rnd(-6, 6), y1 = rnd(-6, 6);
+      front = `(${x1}, ${y1}) & (${x1 + q * k}, ${y1 + p * k})`;
+    }
+    out.push([front, key]);
+  }
+  return out;
+}
+
+function startMemory(area){
+  area.innerHTML = '<div class="mem"></div>';
+  const grid = area.querySelector('.mem');
+  let lock = false, open = [], matched = 0, cards = [];
+  $('gameMsg').textContent = 'Match each equation or point pair with its slope.';
+
+  function deal(){
+    const pairs = makePairs(8);
+    matched = 0; open = []; lock = false;
+    cards = shuffle(pairs.flatMap((pr, i) => [{ id: i, t: pr[0] }, { id: i, t: pr[1] }]));
+    grid.innerHTML = cards.map((c, i) => `<button class="mcard" data-i="${i}">?</button>`).join('');
+    grid.querySelectorAll('.mcard').forEach(b => { b.onclick = () => flip(Number(b.dataset.i)); });
+  }
+  function flip(i){
+    const el = grid.children[i];
+    if (lock || !el || el.classList.contains('up') || el.classList.contains('done')) return;
+    el.classList.add('up');
+    el.textContent = cards[i].t;
+    open.push(i);
+    if (open.length === 2){
+      const [a, b] = open;
+      lock = true;
+      if (cards[a].id === cards[b].id){
+        addScore(10);
+        [a, b].forEach(k => {
+          grid.children[k].classList.remove('up');
+          grid.children[k].classList.add('done');
+        });
+        matched++;
+        open = [];
+        lock = false;
+        if (matched === 8) later(deal, 800);
+      } else {
+        later(() => {
+          [a, b].forEach(k => {
+            grid.children[k].classList.remove('up');
+            grid.children[k].textContent = '?';
+          });
+          open = [];
+          lock = false;
+        }, 800);
+      }
+    }
+  }
+  deal();
+}
+
+/* ---------- Game 3: Whack-a-Slope ---------- */
+function decoy(ans){
+  if (ans === null) return fs(frac(rnd(-6, 6), rnd(1, 5)));
+  if (Math.random() < 0.08) return 'Undefined';
+  return fs(frac(ans.p + rnd(-4, 4), Math.max(1, ans.q + rnd(-2, 2))));
+}
+
+function startWhack(area){
+  area.innerHTML = '<div class="whack-q"></div><div class="whack-grid"></div>';
+  const qEl = area.querySelector('.whack-q');
+  const grid = area.querySelector('.whack-grid');
+  $('gameMsg').textContent = 'Click the correct slope. Speed matters!';
+
+  function next(){
+    const q = pick([qTwoPoints, qEqM, qStandard, qPerp, qRate, qYInt])();
+    const correct = q.ans === null ? 'Undefined' : fs(q.ans);
+    const opts = new Set([correct]);
+    while (opts.size < 9) opts.add(decoy(q.ans));
+    const arr = shuffle([...opts]);
+    qEl.innerHTML = `<div class="muted small">Pick the correct slope</div>${q.text}`;
+    grid.innerHTML = arr.map((s, i) => `<button class="wbtn" data-i="${i}">${s}</button>`).join('');
+    let locked = false;
+    grid.querySelectorAll('.wbtn').forEach(b => {
+      b.onclick = () => {
+        if (locked || b.disabled) return;
+        if (arr[Number(b.dataset.i)] === correct){
+          locked = true;
+          addScore(5);
+          b.classList.add('hit');
+          grid.querySelectorAll('.wbtn').forEach(x => { x.disabled = true; });
+          later(next, 400);
+        } else {
+          b.classList.add('miss');
+          b.disabled = true;
+        }
+      };
+    });
+  }
+  next();
+}
+
+/* ---------- wiring ---------- */
+$('submitBtn').onclick = onEnter;
+$('ans').addEventListener('keydown', e => { if (e.key === 'Enter') onEnter(); });
+$('hintBtn').onclick = hint;
+$('skipBtn').onclick = skip;
+$('topic').onchange = newQuestion;
+$('playBtn').onclick = openMenu;
+$('menuLater').onclick = closeMenu;
+document.querySelectorAll('.gamecard').forEach(b => { b.onclick = () => startGame(b.dataset.game); });
+$('resultsBtn').onclick = () => { $('results').classList.add('hidden'); renderAll(); };
+$('resetBtn').onclick = () => {
+  if (!confirm('Reset your bank, stats and game count?')) return;
+  state = defaultState();
+  save();
+  renderAll();
+};
+
+newQuestion();
+renderAll();
+</script>
+</body>
+</html>
